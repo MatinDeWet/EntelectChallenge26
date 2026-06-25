@@ -45,6 +45,7 @@ if (report)
     Console.WriteLine($"  Total fuel used : {result.TotalFuelUsed:F3} L (remaining {result.FuelRemaining:F3} / cap {level.Car.FuelCapacity:F0})");
     Console.WriteLine($"  Soft cap        : {level.Race.FuelSoftCapLimit:F0} L");
     Console.WriteLine($"  Total tyre wear : {result.TotalDegradation:F4}");
+    Console.WriteLine($"  Pit stops       : {result.PitStopCount}");
     Console.WriteLine($"  Crashes         : {result.CrashCount}");
     Console.WriteLine($"  Blowouts        : {result.BlowoutCount}");
     Console.WriteLine($"  Limp / Crawl    : {result.EverLimp} / {result.EverCrawl}");

@@ -14,6 +14,7 @@ public static class OptimizerRegistry
     public static ILevelOptimizer For(int level) => level switch
     {
         1 => new Level1Optimizer(),
+        2 => new Level2Optimizer(),
         _ => throw new NotSupportedException($"No optimizer implemented for level {level} yet."),
     };
 }

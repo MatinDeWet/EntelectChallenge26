@@ -12,10 +12,13 @@ public sealed class SimulationOptions
     /// <summary>Crash tolerance: entry speed is a crash only if it exceeds safe speed by more than this.</summary>
     public double CrashEpsilon { get; init; } = 1e-9;
 
-    public static SimulationOptions ForLevel(int level) => level switch
+    // Cumulative level rules: degradation is only active from Level 4 (Levels 1–3 have a
+    // single tyre set per compound and do not focus on wear); fuel limits apply from
+    // Level 2 onward (Level 1 has "no fuel limitations").
+    public static SimulationOptions ForLevel(int level) => new()
     {
-        1 => new SimulationOptions { EnableDegradation = false, EnableFuelLimp = false },
-        _ => new SimulationOptions { EnableDegradation = true, EnableFuelLimp = true },
+        EnableDegradation = level >= 4,
+        EnableFuelLimp = level >= 2,
     };
 }
 
@@ -29,6 +32,8 @@ public sealed class RaceResult
     public int CrashCount { get; set; }
     public bool EverLimp { get; set; }
     public bool EverCrawl { get; set; }
+    public int PitStopCount { get; set; }
     public List<double> LapTimes { get; } = new();
+    public List<double> LapFuelUsed { get; } = new();
     public List<string> Warnings { get; } = new();
 }

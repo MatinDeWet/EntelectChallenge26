@@ -23,6 +23,7 @@ public sealed class RaceSimulator
     {
         public double Time;
         public double Fuel;
+        public double FuelConsumed; // total burnt by driving (independent of refuelling)
         public int ActiveTyreId;
         public bool InLimp;
         public bool InCrawl;
@@ -55,7 +56,8 @@ public sealed class RaceSimulator
             var actions = new Dictionary<int, SegmentAction>();
             foreach (var a in lapPlan.Segments) actions[a.Id] = a;
 
-            var lapStart = state.Time;
+            var lapStartTime = state.Time;
+            var lapStartFuel = state.FuelConsumed;
 
             foreach (var seg in _level.Track.Segments)
             {
@@ -67,12 +69,13 @@ public sealed class RaceSimulator
             }
 
             ApplyPit(lapPlan.Pit, state, result);
-            result.LapTimes.Add(state.Time - lapStart);
+            result.LapTimes.Add(state.Time - lapStartTime);
+            result.LapFuelUsed.Add(state.FuelConsumed - lapStartFuel);
         }
 
         result.TotalTime = state.Time;
         result.FuelRemaining = state.Fuel;
-        result.TotalFuelUsed = car.InitialFuel - state.Fuel; // refuel reduces "used" via ApplyPit
+        result.TotalFuelUsed = state.FuelConsumed; // actual fuel burnt by driving
         result.TotalDegradation = state.Degradation.Values.Sum();
         return result;
     }
@@ -227,6 +230,7 @@ public sealed class RaceSimulator
             return;
         }
 
+        result.PitStopCount++;
         var race = _level.Race;
         var pitTime = race.BasePitStopTime;
 
@@ -271,6 +275,7 @@ public sealed class RaceSimulator
 
     private void ConsumeFuel(State state, double used, RaceResult result)
     {
+        state.FuelConsumed += used;
         state.Fuel -= used;
         if (state.Fuel <= 0)
         {

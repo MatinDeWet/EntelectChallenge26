@@ -16,6 +16,7 @@ public static class OptimizerRegistry
         1 => new Level1Optimizer(),
         2 => new Level2Optimizer(),
         3 => new Level3Optimizer(),
+        4 => new Level4Optimizer(),
         _ => throw new NotSupportedException($"No optimizer implemented for level {level} yet."),
     };
 }

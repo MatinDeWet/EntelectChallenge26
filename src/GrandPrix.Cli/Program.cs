@@ -14,13 +14,20 @@ if (options is null)
     return 1;
 }
 
-var (levelPath, outPath, levelNumber, report) = options.Value;
+var (levelPath, outPath, levelNumber, report, l4Threshold, l4Margin, l4Wear) = options.Value;
 
 var level = LevelLoader.Load(levelPath);
 levelNumber ??= InferLevelNumber(levelPath);
 outPath ??= $"output/level{levelNumber}.txt";
 
 var optimizer = OptimizerRegistry.For(levelNumber.Value);
+if (optimizer is GrandPrix.Optimization.Level4Optimizer && (l4Threshold is not null || l4Margin is not null || l4Wear is not null))
+    optimizer = new GrandPrix.Optimization.Level4Optimizer
+    {
+        TyreChangeThreshold = l4Threshold ?? 0.85,
+        CornerSafetyMargin = l4Margin ?? 0.01,
+        WearWeight = l4Wear ?? 0.0,
+    };
 var plan = optimizer.Optimize(level);
 
 var simOptions = SimulationOptions.ForLevel(levelNumber.Value);
@@ -57,11 +64,12 @@ if (report)
 
 return 0;
 
-static (string levelPath, string? outPath, int? levelNumber, bool report)? ParseArgs(string[] args)
+static (string levelPath, string? outPath, int? levelNumber, bool report, double? l4Threshold, double? l4Margin, double? l4Wear)? ParseArgs(string[] args)
 {
     string? levelPath = null, outPath = null;
     int? levelNumber = null;
     var report = false;
+    double? l4Threshold = null, l4Margin = null, l4Wear = null;
 
     for (var i = 0; i < args.Length; i++)
     {
@@ -71,6 +79,9 @@ static (string levelPath, string? outPath, int? levelNumber, bool report)? Parse
             case "--out": outPath = Next(args, ref i); break;
             case "--level-number": levelNumber = int.Parse(Next(args, ref i), CultureInfo.InvariantCulture); break;
             case "--report": report = true; break;
+            case "--l4-threshold": l4Threshold = double.Parse(Next(args, ref i), CultureInfo.InvariantCulture); break;
+            case "--l4-margin": l4Margin = double.Parse(Next(args, ref i), CultureInfo.InvariantCulture); break;
+            case "--l4-wear": l4Wear = double.Parse(Next(args, ref i), CultureInfo.InvariantCulture); break;
             default:
                 Console.Error.WriteLine($"Unknown argument: {args[i]}");
                 return null;
@@ -78,7 +89,7 @@ static (string levelPath, string? outPath, int? levelNumber, bool report)? Parse
     }
 
     if (levelPath is null) return null;
-    return (levelPath, outPath, levelNumber, report);
+    return (levelPath, outPath, levelNumber, report, l4Threshold, l4Margin, l4Wear);
 
     static string Next(string[] a, ref int i)
     {

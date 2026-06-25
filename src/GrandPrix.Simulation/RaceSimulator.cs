@@ -111,11 +111,13 @@ public sealed class RaceSimulator
             phases = profile.Phases;
             endSpeed = profile.EndSpeed;
 
-            // Tyre wear: full-length straight term + braking term.
+            // Tyre wear: the straight term applies only over the non-braking (on-throttle)
+            // distance — confirmed against the L4 log — plus the separate braking term.
             if (_opt.EnableDegradation)
             {
-                var deg = TyreModel.StraightDegradation(degRate, seg.Length);
-                if (dBrake > 0) deg += TyreModel.BrakingDegradation(degRate, profile.SpeedAtBrake, endSpeed);
+                var dBrakeClamped = Math.Clamp(dBrake, 0.0, seg.Length);
+                var deg = TyreModel.StraightDegradation(degRate, seg.Length - dBrakeClamped);
+                if (dBrakeClamped > 0) deg += TyreModel.BrakingDegradation(degRate, profile.SpeedAtBrake, endSpeed);
                 ApplyWear(state, result, deg);
             }
         }

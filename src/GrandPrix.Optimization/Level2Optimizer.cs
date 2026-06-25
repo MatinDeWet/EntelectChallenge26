@@ -33,7 +33,7 @@ public sealed class Level2Optimizer : ILevelOptimizer
         var lapFuel = new RaceSimulator(level, estimateOptions).Simulate(noPit).LapFuelUsed;
 
         // Schedule the minimum refuel stops so the car never runs dry.
-        var pits = SchedulePits(level, lapFuel);
+        var pits = PitScheduler.ScheduleRefuels(level, lapFuel, FuelSafetyBuffer);
 
         // Pass 2: rebuild with pits (a pitted lap exits at pit_exit_speed into the next lap).
         return BuildPlan(level, planner, pits);
@@ -64,41 +64,6 @@ public sealed class Level2Optimizer : ILevelOptimizer
         }
 
         return plan;
-    }
-
-    private Dictionary<int, double> SchedulePits(Level level, IReadOnlyList<double> lapFuel)
-    {
-        var capacity = level.Car.FuelCapacity;
-        var n = level.Race.Laps;
-        var pits = new Dictionary<int, double>();
-
-        // Suffix sums: remainingNeed[lap] = fuel needed for laps (lap+1 .. n).
-        var suffix = new double[n + 2];
-        for (var lap = n; lap >= 1; lap--)
-            suffix[lap] = suffix[lap + 1] + lapFuel[lap - 1];
-
-        var fuel = level.Car.InitialFuel;
-        for (var lap = 1; lap <= n; lap++)
-        {
-            fuel -= lapFuel[lap - 1]; // burn this lap
-
-            if (lap >= n) break; // no pit possible/needed after the final lap
-
-            var nextNeed = lapFuel[lap]; // consumption of lap+1
-            if (fuel < nextNeed + FuelSafetyBuffer)
-            {
-                var remainingNeed = suffix[lap + 1];           // fuel still required to finish
-                var topUpToFinish = remainingNeed - fuel + FuelSafetyBuffer;
-                var refuel = Math.Min(capacity - fuel, Math.Max(0.0, topUpToFinish));
-                if (refuel > 0)
-                {
-                    pits[lap] = refuel;
-                    fuel += refuel;
-                }
-            }
-        }
-
-        return pits;
     }
 
     private static double Round(double v) => Math.Round(v, 3, MidpointRounding.AwayFromZero);

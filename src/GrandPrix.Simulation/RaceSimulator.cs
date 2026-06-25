@@ -90,77 +90,48 @@ public sealed class RaceSimulator
         var accelEff = car.Accel * w.AccelerationMultiplier;
         var degRate = _opt.EnableDegradation ? _level.PropertiesOfId(state.ActiveTyreId).DegradationRate(w.Kind) : 0.0;
 
+        IReadOnlyList<StraightProfile.Phase> phases;
         double endSpeed;
-        var phases = new List<(double vi, double vf, double dist)>();
 
         if (state.InLimp)
         {
             // Constant limp speed, no accel/brake.
-            phases.Add((car.LimpSpeed, car.LimpSpeed, seg.Length));
+            phases = new[] { new StraightProfile.Phase(car.LimpSpeed, car.LimpSpeed, seg.Length) };
             endSpeed = car.LimpSpeed;
         }
         else
         {
             var brakeEff = car.Brake * w.DecelerationMultiplier;
             var vIn = state.Speed;
-            var target = Math.Min(action?.TargetSpeed ?? vIn, car.MaxSpeed);
-            var dBrake = Math.Clamp(action?.BrakeStartBeforeNext ?? 0.0, 0.0, seg.Length);
-            var regionA = seg.Length - dBrake;
+            var target = action?.TargetSpeed ?? vIn;
+            var dBrake = action?.BrakeStartBeforeNext ?? 0.0;
 
-            // Phase A: accelerate toward target, then cruise (or follow-through hold).
-            double vAtBrake;
-            if (target > vIn + 1e-12)
-            {
-                var dAcc = Kinematics.DistanceForSpeedChange(vIn, target, accelEff);
-                if (dAcc >= regionA)
-                {
-                    var vEndA = Math.Min(Kinematics.SpeedAfterDistance(vIn, accelEff, regionA), car.MaxSpeed);
-                    phases.Add((vIn, vEndA, regionA));
-                    vAtBrake = vEndA;
-                }
-                else
-                {
-                    phases.Add((vIn, target, dAcc));
-                    phases.Add((target, target, regionA - dAcc));
-                    vAtBrake = target;
-                }
-            }
-            else
-            {
-                // Follow-through: hold entry speed across the non-braking region.
-                phases.Add((vIn, vIn, regionA));
-                vAtBrake = vIn;
-            }
-
-            // Phase B: braking.
-            if (dBrake > 0)
-            {
-                var vEnd = Math.Max(Kinematics.SpeedAfterDistance(vAtBrake, -brakeEff, dBrake), car.CrawlSpeed);
-                phases.Add((vAtBrake, vEnd, dBrake));
-                endSpeed = vEnd;
-            }
-            else
-            {
-                endSpeed = vAtBrake;
-            }
+            var profile = StraightProfile.Compute(
+                vIn, target, dBrake, seg.Length, accelEff, brakeEff, car.MaxSpeed, car.CrawlSpeed);
+            phases = profile.Phases;
+            endSpeed = profile.EndSpeed;
 
             // Tyre wear: full-length straight term + braking term.
             if (_opt.EnableDegradation)
             {
                 var deg = TyreModel.StraightDegradation(degRate, seg.Length);
-                if (dBrake > 0) deg += TyreModel.BrakingDegradation(degRate, vAtBrake, endSpeed);
+                if (dBrake > 0) deg += TyreModel.BrakingDegradation(degRate, profile.SpeedAtBrake, endSpeed);
                 ApplyWear(state, result, deg);
             }
         }
 
-        // Time + fuel across all phases.
-        foreach (var (vi, vf, dist) in phases)
+        // Time + fuel across all phases. Fuel is NOT consumed while braking (off-throttle) —
+        // confirmed against the official submission logs (corner/accel/cruise match exactly,
+        // braking phases burn nothing). Time still advances during braking.
+        foreach (var p in phases)
         {
-            if (dist <= 0) continue;
-            var avg = (vi + vf) / 2.0;
+            if (p.Dist <= 0) continue;
+            var avg = (p.Vi + p.Vf) / 2.0;
             if (avg <= 0) continue;
-            state.Time += dist / avg;
-            ConsumeFuel(state, FuelModel.Used(car.FuelKBase, vi, vf, dist), result);
+            state.Time += p.Dist / avg;
+            var braking = p.Vf < p.Vi - 1e-9;
+            if (!braking)
+                ConsumeFuel(state, FuelModel.Used(car.FuelKBase, p.Vi, p.Vf, p.Dist), result);
         }
 
         state.Speed = endSpeed;

@@ -133,13 +133,18 @@ public sealed class DegradationAwarePlanner
         var accelEff = _car.Accel * w0.AccelerationMultiplier;
         var brakeEff = _car.Brake * w0.DecelerationMultiplier;
 
-        var vExit = ChainExitSpeed(i, tStart, setId, setDeg);
-        var sol = Solve(seg, vIn, vExit, accelEff, brakeEff);
+        // The tyre wears DURING this straight, so the corner ahead is taken on a slightly more
+        // worn (lower-grip) tyre than at the straight's start. Use the post-straight wear when
+        // sizing the corner entry speed, otherwise the safety margin is eaten by the in-straight
+        // wear and near-limit corners crash on the grader.
+        var degRate = _level.PropertiesOfId(setId).DegradationRate(w0.Kind);
+        var sol = Solve(seg, vIn, ChainExitSpeed(i, tStart, setId, setDeg), accelEff, brakeEff);
         var straightTime = StraightProfile.Time(sol.profile.Phases);
 
-        for (var iter = 0; iter < 2; iter++)
+        for (var iter = 0; iter < 3; iter++)
         {
-            var refined = ChainExitSpeed(i, tStart + straightTime, setId, setDeg);
+            var cornerDeg = setDeg + StraightWear(degRate, seg.Length - sol.brakeStart, sol);
+            var refined = ChainExitSpeed(i, tStart + straightTime, setId, cornerDeg);
             sol = Solve(seg, vIn, refined, accelEff, brakeEff);
             var nt = StraightProfile.Time(sol.profile.Phases);
             if (Math.Abs(nt - straightTime) < 1e-9) { straightTime = nt; break; }
@@ -153,6 +158,15 @@ public sealed class DegradationAwarePlanner
                 accelFuel += FuelModel.Used(_car.FuelKBase, p.Vi, p.Vf, p.Dist);
 
         return (sol.target, sol.brakeStart, straightTime, sol.profile.EndSpeed, accelFuel, sol.profile.SpeedAtBrake);
+    }
+
+    /// <summary>Total tyre wear over a straight: the non-braking straight term + the braking term.</summary>
+    private static double StraightWear(double degRate, double nonBrakingDist, (double target, double brakeStart, StraightProfile.Result profile) sol)
+    {
+        var deg = TyreModel.StraightDegradation(degRate, Math.Max(0.0, nonBrakingDist));
+        if (sol.brakeStart > 0)
+            deg += TyreModel.BrakingDegradation(degRate, sol.profile.SpeedAtBrake, sol.profile.EndSpeed);
+        return deg;
     }
 
     private (double target, double brakeStart, StraightProfile.Result profile)

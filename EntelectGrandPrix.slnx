@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GrandPrix.Cli/GrandPrix.Cli.csproj" />
+    <Project Path="src/GrandPrix.Domain/GrandPrix.Domain.csproj" />
+    <Project Path="src/GrandPrix.Optimization/GrandPrix.Optimization.csproj" />
+    <Project Path="src/GrandPrix.Simulation/GrandPrix.Simulation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GrandPrix.Tests/GrandPrix.Tests.csproj" />
+  </Folder>
+</Solution>

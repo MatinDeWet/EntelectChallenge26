@@ -11,13 +11,14 @@ public sealed class Level4Optimizer : ILevelOptimizer
 {
     public int Level => 4;
 
-    public double CornerSafetyMargin { get; init; } = 0.01;
-    public double TyreChangeThreshold { get; init; } = 0.84;
+    public double CornerSafetyMargin { get; init; } = 0.007;
+    public double TyreChangeThreshold { get; init; } = 0.92;
 
     /// <summary>0 = always fit the fastest tyre; higher biases toward high-degradation compounds
-    /// to grow the tyre-wear bonus (at some cost to lap time). The tyre-bonus (100k per unit of
-    /// Σ wear) appears to outweigh the lap-time cost of wear, so we bias toward more wear.</summary>
-    public double WearWeight { get; init; } = 1.5;
+    /// to grow the tyre-wear bonus. Paired submissions (v1 wear 6.71 vs v2 wear 7.18) showed the
+    /// score FELL with more wear: time dominates (~−150 to −190 per second) and chasing wear costs
+    /// far more time than the bonus is worth. So minimise time — keep wear bias at 0.</summary>
+    public double WearWeight { get; init; } = 0.0;
 
     public RacePlan Optimize(Level level)
         => new DegradationAwarePlanner(level, CornerSafetyMargin, TyreChangeThreshold, WearWeight).Build();

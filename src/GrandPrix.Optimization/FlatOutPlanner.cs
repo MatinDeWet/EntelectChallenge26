@@ -40,7 +40,7 @@ public sealed class FlatOutPlanner
         var safe = new double[segs.Count];
         for (var i = 0; i < segs.Count; i++)
             if (segs[i].Type == SegmentType.Corner)
-                safe[i] = TyreModel.SafeCornerSpeed(friction, segs[i].Radius!.Value) * (1.0 - CornerSafetyMargin);
+                safe[i] = TyreModel.SafeCornerSpeed(friction, segs[i].Radius!.Value, level.Car.CrawlSpeed) * (1.0 - CornerSafetyMargin);
 
         _exitSpeed = new double[segs.Count];
         for (var i = 0; i < segs.Count; i++)

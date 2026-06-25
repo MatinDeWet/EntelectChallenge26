@@ -161,7 +161,7 @@ public sealed class RaceSimulator
         {
             var totalDeg = _opt.EnableDegradation ? state.DegOf(state.ActiveTyreId) : 0.0;
             var friction = TyreModel.Friction(tyre, totalDeg, kind);
-            var safe = TyreModel.SafeCornerSpeed(friction, radius);
+            var safe = TyreModel.SafeCornerSpeed(friction, radius, car.CrawlSpeed);
 
             if (state.Speed > safe + _opt.CrashEpsilon)
             {

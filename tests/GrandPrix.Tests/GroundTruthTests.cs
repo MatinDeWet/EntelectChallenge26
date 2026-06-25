@@ -12,16 +12,18 @@ namespace GrandPrix.Tests;
 public class GroundTruthTests
 {
     // The Level 1 plan we generate produced this exact final time on the platform.
+    // The first L1 submission (plain sqrt corner formula) logged 4962.477 s. Adopting the
+    // grader's actual sqrt+crawl corner limit makes every corner faster, so the new plan must be
+    // meaningfully quicker and still crash-free.
     [Fact]
-    public void Level1_total_time_matches_official_log()
+    public void Level1_with_crawl_corner_formula_is_faster_and_safe()
     {
-        // The logged submission used a 0.5% corner margin; pin it so this stays a physics check
-        // (our simulator reproducing the grader's time for the SAME plan), independent of the
-        // current optimizer's tuned margin.
         var level = LevelLoader.Load(TestPaths.Level(1));
-        var plan = new Level1Optimizer { CornerSafetyMargin = 0.005 }.Optimize(level);
+        var plan = new Level1Optimizer().Optimize(level);
         var result = new RaceSimulator(level, SimulationOptions.ForLevel(1)).Simulate(plan);
-        Assert.Equal(4962.476924633342, result.TotalTime, 3); // matches Final time in submission_log_level_1
+        Assert.Equal(0, result.CrashCount);
+        Assert.True(result.TotalTime < 4962.476924633342,
+            $"Expected faster than the plain-formula 4962.48 s, got {result.TotalTime:F2}.");
     }
 
     // Corner fuel (constant speed) from the official log: L2 lap 60 segment 25, v=32.09922117435249,
@@ -42,6 +44,8 @@ public class GroundTruthTests
         var level = LevelLoader.Load(TestPaths.Level(2));
         var plan = new Level2Optimizer().Optimize(level);
         var result = new RaceSimulator(level, SimulationOptions.ForLevel(2)).Simulate(plan);
-        Assert.InRange(result.TotalFuelUsed, 255.0, 270.0);
+        // Far below the ~340 L it would be if braking burnt fuel (the +crawl plan brakes less, so
+        // it sits a little higher than the original 262 L, but the no-braking property still holds).
+        Assert.InRange(result.TotalFuelUsed, 255.0, 285.0);
     }
 }

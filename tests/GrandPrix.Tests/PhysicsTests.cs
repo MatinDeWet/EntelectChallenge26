@@ -14,12 +14,13 @@ public class PhysicsTests
         Assert.Equal(0.40432, used, 5);
     }
 
-    // PDF §4.3: friction 0.9, radius 50 ⇒ 21 m/s.
+    // PDF §4.3: sqrt(0.9·9.8·50) = 21 m/s, plus the crawl_constant term (Car-section formula,
+    // confirmed by submission to be the grader's actual limit).
     [Fact]
-    public void SafeCornerSpeed_matches_pdf_worked_example()
+    public void SafeCornerSpeed_is_sqrt_plus_crawl()
     {
-        var v = TyreModel.SafeCornerSpeed(0.9, 50);
-        Assert.Equal(21.0, v, 6);
+        Assert.Equal(21.0, TyreModel.SafeCornerSpeed(0.9, 50, 0.0), 6);
+        Assert.Equal(31.0, TyreModel.SafeCornerSpeed(0.9, 50, 10.0), 6);
     }
 
     // PDF §5.1: (1.8 − 0.5) × 1 = 1.3.

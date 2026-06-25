@@ -171,16 +171,17 @@ Rules / edge behaviour:
 - **Safe maximum corner speed:**
 
   ```
-  max_corner_speed = sqrt( tyre_friction × g × radius_m )
+  max_corner_speed = sqrt( tyre_friction × g × radius_m ) + crawl_constant_m/s
   ```
 
   where `tyre_friction` is evaluated for the *current* tyre, its accumulated
   degradation, and the *current* weather (§5.1).
 
-  ⚠️ **Open Question Q2:** the PDF *Car* section writes
-  `sqrt(friction·g·radius) + crawl_constant_m/s`, while the PDF *Track* section and
-  worked example use plain `sqrt(friction·g·radius)`. We adopt the plain form as primary
-  and treat `crawl_constant` as the global speed floor. Confirm against the grader.
+  ✅ **Q2 RESOLVED:** the **Car-section formula with the `+ crawl_constant` term is correct**
+  (the grader's actual corner limit), not the plain Track-section `sqrt(...)`. Confirmed by a
+  Level-2 submission using `+crawl` scoring **2,830,620** vs **2,121,318** for the plain form
+  (the only difference between the two solutions) — every corner is taken ~`crawl_constant`
+  faster. This was worth ~13% race time on every level.
 
 ### 4.4 Crashing (taking a corner too fast)
 

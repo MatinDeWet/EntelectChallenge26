@@ -204,7 +204,7 @@ public sealed class DegradationAwarePlanner
             {
                 var w = _schedule.At(t);
                 var friction = TyreModel.Friction(props, setDeg, w.Kind);
-                var safe = TyreModel.SafeCornerSpeed(friction, _segs[j].Radius!.Value) * (1.0 - _margin);
+                var safe = TyreModel.SafeCornerSpeed(friction, _segs[j].Radius!.Value, _car.CrawlSpeed) * (1.0 - _margin);
                 minSafe = Math.Min(minSafe, safe);
                 var traverse = double.IsPositiveInfinity(speed) ? minSafe : Math.Min(speed, minSafe);
                 if (traverse > 1e-6) t += _segs[j].Length / traverse;

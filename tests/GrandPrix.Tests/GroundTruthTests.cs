@@ -15,8 +15,11 @@ public class GroundTruthTests
     [Fact]
     public void Level1_total_time_matches_official_log()
     {
+        // The logged submission used a 0.5% corner margin; pin it so this stays a physics check
+        // (our simulator reproducing the grader's time for the SAME plan), independent of the
+        // current optimizer's tuned margin.
         var level = LevelLoader.Load(TestPaths.Level(1));
-        var plan = new Level1Optimizer().Optimize(level);
+        var plan = new Level1Optimizer { CornerSafetyMargin = 0.005 }.Optimize(level);
         var result = new RaceSimulator(level, SimulationOptions.ForLevel(1)).Simulate(plan);
         Assert.Equal(4962.476924633342, result.TotalTime, 3); // matches Final time in submission_log_level_1
     }

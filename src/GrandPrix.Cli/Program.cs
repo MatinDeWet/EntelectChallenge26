@@ -20,14 +20,21 @@ var level = LevelLoader.Load(levelPath);
 levelNumber ??= InferLevelNumber(levelPath);
 outPath ??= $"output/level{levelNumber}.txt";
 
-var optimizer = OptimizerRegistry.For(levelNumber.Value);
-if (optimizer is GrandPrix.Optimization.Level4Optimizer && (l4Threshold is not null || l4Margin is not null || l4Wear is not null))
-    optimizer = new GrandPrix.Optimization.Level4Optimizer
+// --margin overrides the corner safety margin for L1-L3; L4 keeps its own knobs.
+var margin = l4Margin; // --l4-margin doubles as the general --margin override
+var optimizer = levelNumber.Value switch
+{
+    1 => new GrandPrix.Optimization.Level1Optimizer { CornerSafetyMargin = margin ?? 0.001 },
+    2 => new GrandPrix.Optimization.Level2Optimizer { CornerSafetyMargin = margin ?? 0.001 },
+    3 => new GrandPrix.Optimization.Level3Optimizer { CornerSafetyMargin = margin ?? 0.001 },
+    4 => new GrandPrix.Optimization.Level4Optimizer
     {
-        TyreChangeThreshold = l4Threshold ?? 0.85,
-        CornerSafetyMargin = l4Margin ?? 0.01,
+        TyreChangeThreshold = l4Threshold ?? 0.92,
+        CornerSafetyMargin = margin ?? 0.005,
         WearWeight = l4Wear ?? 0.0,
-    };
+    },
+    _ => OptimizerRegistry.For(levelNumber.Value),
+};
 var plan = optimizer.Optimize(level);
 
 var simOptions = SimulationOptions.ForLevel(levelNumber.Value);

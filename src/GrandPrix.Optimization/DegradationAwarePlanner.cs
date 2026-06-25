@@ -19,9 +19,12 @@ public sealed class DegradationAwarePlanner
     private readonly double _margin;
     private readonly double _changeThreshold; // change tyres when wear would exceed this next lap
     private readonly double _wearWeight;      // 0 = pick fastest tyre; higher = bias toward high-wear compounds
+    private readonly Random? _rng;            // when set, explores alternative tyre picks (for search)
+    private readonly double _exploreProb;     // probability of picking a non-top fresh set
 
     public DegradationAwarePlanner(Level level, double cornerSafetyMargin = 0.01,
-        double changeThreshold = 0.85, double wearWeight = 0.0)
+        double changeThreshold = 0.85, double wearWeight = 0.0,
+        Random? rng = null, double exploreProb = 0.0)
     {
         _level = level;
         _car = level.Car;
@@ -30,6 +33,8 @@ public sealed class DegradationAwarePlanner
         _margin = cornerSafetyMargin;
         _changeThreshold = changeThreshold;
         _wearWeight = wearWeight;
+        _rng = rng;
+        _exploreProb = exploreProb;
     }
 
     public RacePlan Build()
@@ -83,12 +88,15 @@ public sealed class DegradationAwarePlanner
                 speed = endSpeed;
             }
 
-            // End-of-lap pit decision: change tyres before a blowout, and/or refuel.
+            // End-of-lap pit decision: change tyres before a blowout, and/or refuel. During a
+            // randomised search, jitter the change point and refuel trigger so restarts explore
+            // different pit timings (not just different compounds).
             var lapDeg = deg[activeId] - lapStartDeg;
             var lapFuelUsed = lapStartFuel - fuel;
-            var changeTyre = lap < _level.Race.Laps &&
-                             deg[activeId] + lapDeg * 1.15 > _changeThreshold;
-            var refuel = fuel < lapFuelUsed * 2.5;
+            var thr = _changeThreshold + (_rng?.NextDouble() - 0.5 ?? 0.0) * 0.06; // ±3%
+            var refuelTrigger = _rng is null ? 2.5 : 1.6 + _rng.NextDouble() * 2.0; // 1.6–3.6 laps
+            var changeTyre = lap < _level.Race.Laps && deg[activeId] + lapDeg * 1.15 > thr;
+            var refuel = fuel < lapFuelUsed * refuelTrigger;
 
             if (changeTyre || refuel)
             {
@@ -232,7 +240,7 @@ public sealed class DegradationAwarePlanner
             return (fr + _wearWeight * 10.0 * dr) / samples.Count;
         }
 
-        var bestFreshId = -1; var bestFresh = double.NegativeInfinity;
+        var fresh = new List<(int id, double score)>();
         var bestUsedId = -1; var bestUsedLife = double.NegativeInfinity;
 
         foreach (var set in _level.AvailableSets)
@@ -241,12 +249,7 @@ public sealed class DegradationAwarePlanner
             var score = Score(props);
             foreach (var id in set.Ids)
             {
-                if (!mounted.Contains(id))
-                {
-                    if (score > bestFresh + 1e-12 ||
-                        (Math.Abs(score - bestFresh) <= 1e-12 && id < bestFreshId))
-                    { bestFresh = score; bestFreshId = id; }
-                }
+                if (!mounted.Contains(id)) fresh.Add((id, score));
                 else
                 {
                     var life = props.LifeSpan - deg[id];
@@ -255,7 +258,20 @@ public sealed class DegradationAwarePlanner
             }
         }
 
-        return bestFreshId >= 0 ? bestFreshId : bestUsedId;
+        if (fresh.Count == 0) return bestUsedId;
+
+        // Rank fresh sets by score (speed), tie-break by id for determinism.
+        fresh.Sort((a, b) => b.score != a.score ? b.score.CompareTo(a.score) : a.id.CompareTo(b.id));
+
+        // Exploration: occasionally pick among the top few alternatives instead of the best,
+        // so a randomized-restart search can discover better whole-race tyre schedules.
+        if (_rng is not null && _exploreProb > 0 && fresh.Count > 1 && _rng.NextDouble() < _exploreProb)
+        {
+            var k = Math.Min(3, fresh.Count);
+            return fresh[_rng.Next(k)].id;
+        }
+
+        return fresh[0].id;
     }
 
     private static double Floor(double v) => Math.Floor(v * 1000.0) / 1000.0;

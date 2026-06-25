@@ -13,7 +13,7 @@ public sealed class Level3Optimizer : ILevelOptimizer
 {
     public int Level => 3;
 
-    public double CornerSafetyMargin { get; init; } = 0.005;
+    public double CornerSafetyMargin { get; init; } = 0.001;
     public double FuelSafetyBuffer { get; init; } = 1.0;
 
     public RacePlan Optimize(Level level)

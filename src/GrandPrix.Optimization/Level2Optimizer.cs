@@ -16,7 +16,7 @@ public sealed class Level2Optimizer : ILevelOptimizer
 {
     public int Level => 2;
 
-    public double CornerSafetyMargin { get; init; } = 0.005;
+    public double CornerSafetyMargin { get; init; } = 0.001;
 
     /// <summary>Fuel buffer (L) kept in reserve when deciding to pit, against estimate drift.</summary>
     public double FuelSafetyBuffer { get; init; } = 1.0;

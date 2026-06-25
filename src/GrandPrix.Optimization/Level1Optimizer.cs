@@ -11,7 +11,7 @@ public sealed class Level1Optimizer : ILevelOptimizer
 {
     public int Level => 1;
 
-    public double CornerSafetyMargin { get; init; } = 0.005;
+    public double CornerSafetyMargin { get; init; } = 0.001;
 
     public RacePlan Optimize(Level level)
     {
